@@ -72,12 +72,12 @@
     </div>
 
     <section class="card">
-      <label for="queryInput">學號或姓名</label>
+      <label for="queryInput">學號</label>
       <div class="search-row">
-        <input id="queryInput" type="text" autocomplete="off" placeholder="輸入學號或完整姓名">
+        <input id="queryInput" type="text" autocomplete="off" placeholder="請輸入學號">
         <button id="searchBtn" class="btn" type="button">查詢</button>
       </div>
-      <div class="hint">姓名採完整姓名查詢；若有同名學生會顯示多筆供選擇。</div>
+      
       <div id="searchError" class="error hidden"></div>
       <div id="resultArea"></div>
     </section>
@@ -87,7 +87,7 @@
     const API_URL='https://script.google.com/macros/s/AKfycby2mbLVPRt51qYD12ibSuXWsD8idyPTiWqHVbH9Iz2Hdlhdwj8PwcIAH_AgTBC5xXc/exec';
     let adminPassword='';
     let currentQuery='';
-    let currentStudentId='';
+    
     let searchLoading=false;
     let syncLoading=false;
 
@@ -141,7 +141,7 @@
     }
 
     function logout(){
-      adminPassword='';currentQuery='';currentStudentId='';
+      adminPassword='';currentQuery='';
       $('passwordInput').value='';$('queryInput').value='';$('resultArea').innerHTML='';
       $('pickupPage').classList.add('hidden');$('loginPage').classList.remove('hidden');
     }
@@ -150,7 +150,7 @@
       if(searchLoading||!adminPassword)return;
       const query=queryOverride!==null?queryOverride:String($('queryInput').value||'').trim();
       if(!query){
-        if(!silent)showError('請輸入學號或姓名');
+        if(!silent)showError('請輸入學號');
         return;
       }
 
@@ -166,19 +166,9 @@
         currentQuery=query;
         const matches=r.matches||[];
 
-        if(matches.length===1){
-          currentStudentId=matches[0].studentId;
-          renderStudent(matches[0]);
-        }else{
-          if(currentStudentId){
-            const same=matches.find(m=>m.studentId===currentStudentId);
-            if(same){renderStudent(same);return;}
-          }
-          currentStudentId='';
-          renderCandidates(matches);
-        }
+        if(!matches.length) throw new Error('查無已登記的學生');
+        renderStudent(matches[0]);
       }catch(e){
-        currentStudentId='';
         $('resultArea').innerHTML='';
         if(!silent)showError(e.message||'查詢失敗');
       }finally{
@@ -187,14 +177,6 @@
       }
     }
 
-    function renderCandidates(matches){
-      $('resultArea').innerHTML='<div style="margin-top:16px;font-weight:800">找到 '+matches.length+' 位同名學生，請選擇：</div>'+
-        matches.map(m=>`<button class="candidate" type="button" data-id="${esc(m.studentId)}"><strong>${esc(m.name)}</strong><small>${esc(m.className)}｜${esc(m.studentId)}｜${esc(m.size)}</small></button>`).join('');
-      document.querySelectorAll('.candidate').forEach(btn=>btn.addEventListener('click',()=>{
-        const m=matches.find(x=>x.studentId===btn.dataset.id);
-        if(m){currentStudentId=m.studentId;renderStudent(m)}
-      }));
-    }
 
     function renderStudent(s){
       const paidText=s.paid?'已繳費':'尚未繳費';
